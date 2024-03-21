@@ -1,0 +1,97 @@
+Table Patients {
+  PatientID integer [primary key, unique]
+  Name varchar(100)
+  DateOfBirth date
+  Gender varchar(10)
+  ContactInfo varchar(100)
+  Username varchar(50) [unique] // Add a username field for online registration
+  Password varchar(50) // Add a password field for online registration
+}
+
+Table Doctors {
+  DoctorID integer [primary key, unique]
+  Name varchar(100)
+  Specialization varchar(100)
+  ContactInfo varchar(100)
+}
+
+Table Appointments {
+  AppointmentID integer [primary key, unique]
+  PatientID integer [ref: > Patients.PatientID]
+  DoctorID integer [ref: > Doctors.DoctorID]
+  AppointmentDateTime timestamp
+  Status varchar(20)
+}
+
+Table MedicalRecords {
+  RecordID integer [primary key, unique]
+  PatientID integer [ref: > Patients.PatientID]
+  DoctorID integer [ref: > Doctors.DoctorID]
+  Date date
+  Diagnosis text
+  Treatment text
+}
+
+Table Medications {
+  MedicationID integer [primary key, unique]
+  Name varchar(100)
+  Manufacturer varchar(100)
+  Dosage varchar(50)
+  Price decimal(10, 2)
+}
+
+Table Prescriptions {
+  PrescriptionID integer [primary key, unique]
+  RecordID integer [ref: > MedicalRecords.RecordID]
+  MedicationID integer [ref: > Medications.MedicationID]
+  DosageInstructions text
+  Quantity integer
+}
+
+Table RegistrationRequests {
+  RequestID integer [primary key, unique]
+  Name varchar(100)
+  DateOfBirth date
+  Gender varchar(10)
+  ContactInfo varchar(100)
+  Username varchar(50) [unique]
+  Password varchar(50)
+  RequestDateTime timestamp [default: `CURRENT_TIMESTAMP`]
+  Status varchar(20) [default: 'Pending']
+}
+
+Table ConsultationRequests {
+  RequestID integer [primary key, unique]
+  PatientID integer [ref: > Patients.PatientID]
+  DoctorID integer [ref: > Doctors.DoctorID]
+  RequestDateTime timestamp [default: `CURRENT_TIMESTAMP`]
+  
+  Status varchar(20) [default: 'Pending']
+}
+
+Table Consultations {
+  ConsultationID integer [primary key, unique]
+  PatientID integer [ref: > Patients.PatientID]
+  DoctorID integer [ref: > Doctors.DoctorID]
+  StartTime timestamp
+  EndTime timestamp
+  Status varchar(20) [default: 'Scheduled']
+}
+
+Table DiagnosisResults {
+  ResultID integer [primary key, unique]
+  PatientID integer [ref: > Patients.PatientID]
+  DoctorID integer [ref: > Doctors.DoctorID]
+  UploadDateTime timestamp [default: `CURRENT_TIMESTAMP`]
+  ResultFile bytea // Store the diagnosis result file (you may need to adjust the data type based on your database's requirements)
+  Notes text
+}
+
+Table ChatMessages {
+  MessageID int [pk, unique, increment]
+  SenderID int [ref: > Patients.PatientID]
+  ReceiverID int [ref: > Doctors.DoctorID]
+  MessageType varchar(20)
+  MessageText text
+  MessageDateTime timestamp [default: `CURRENT_TIMESTAMP`]
+}

@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "user";
+
+service UserService {
+  rpc Create(UserCreateReq) returns (UserResponse);
+  rpc Update(UserUpd) returns (UserResponse);
+  rpc Delete(UserRequest) returns (UserResponse);
+  rpc GetAll(GetAllUsersRequest) returns (GetAllUsersResponse);
+  rpc Get(UserRequest) returns (UserResponse);
+  rpc CheckUniquess(CheckUniqReq) returns (CheckUniqResp);
+  rpc GetUserByEmail(Email) returns(UserResponse);
+}
+
+message CheckUniqReq {
+  string field = 1;
+  string value = 2;
+}
+
+message CheckUniqResp {
+  bool is_exist = 1;
+}
+
+message GetAllUsersRequest {
+  string page = 1;
+  string limit = 2;
+}
+
+message Email {
+  string email = 1;
+}
+
+message GetAllUsersResponse {
+  repeated UserResponse allUsers = 1;
+}
+
+message UserRequest {
+  string userId = 1;
+}
+
+message UserCreateReq {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string password = 5;
+  string refreshToken = 6;
+}
+
+message UserUpd {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string password = 5;
+}
+
+message UserResponse {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string password = 5;
+  string accessToken = 6;
+  string refreshToken = 7;
+  string createdAt = 8;
+  string updatedAt = 9;
+}

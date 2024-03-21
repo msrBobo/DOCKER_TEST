@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package post;
+option go_package = "post";
+
+service PostService {
+    rpc Create(Post) returns (Post);
+    rpc Get(GetRequest) returns (PostResponse);
+    // rpc GetPostByOwnerId(GetByOwnerIdRequest) returns (GetByOwnerIdResponse); 
+}
+
+message GetByOwnerIdRequest {
+    string ownerId = 1;
+}
+
+message GetByOwnerIdResponse {
+    repeated  Post posts = 1;
+}
+message OwnerByPosts{
+    string id = 1;
+    string name = 2;
+    string last_name = 3;
+    repeated Post post = 4;
+}
+
+message Owner {
+    string id = 1;
+    string name = 2;
+    string last_name = 3;
+}
+
+message GetRequest {
+    string post_id = 1;
+}
+message Post {
+    string id = 1;
+    string title = 2;
+    string image_url = 3;
+    string owner_id = 4;
+}
+
+message PostResponse {
+    string id = 1;
+    string title = 2;
+    string image_url = 3;
+    Owner owner = 4;
+} 

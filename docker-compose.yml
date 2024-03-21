@@ -1,0 +1,406 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq
+    container_name: my-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15673:15673"  
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backend
+
+  redis:
+    image: redis
+    container_name: my-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - backend
+    
+
+  api:
+    container_name: api-gateway
+    build: ./api-gateway
+    ports:
+      - "5053:5053"
+    environment:
+      RABBITMQ_HOST: rabbitmq 
+      RABBITMQ_PORT: 5672
+      USER_SERVICE_HOST: "user-service"
+      USER_SERVICE_PORT: 7778
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - rabbitmq
+      - redis
+    links:
+      - rabbitmq
+      - redis
+    networks:
+      - backend
+
+  mongodb:
+    container_name: mongodb
+    image: mongo
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - backend
+    restart: unless-stopped
+  
+
+  db:
+    container_name: db
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      PGDATA: /data/postgres
+      POSTGRES_DB: userdb bookingdb
+    volumes:
+      - db_data:/data/postgres
+    ports:
+      - "5432:5432" 
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d postgres"]
+      interval: 30s
+      timeout: 40s
+      retries: 5
+
+
+  migrate-table:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    command: ["-path", "/migrations", "-database", "postgres://postgres:1234@db:5432/userdb?sslmode=disable", "up", "1"]
+    depends_on:
+      - db
+    links:
+      - db
+    networks:
+      - backend
+
+  user-service:
+    container_name: user-service
+    build: ./user-service
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: userdb
+    ports:
+      - "7778:7778"
+    depends_on:
+      - db
+      - rabbitmq
+    links:
+      - db
+      - rabbitmq
+    networks:
+      - backend
+
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  db_data:
+  mongodb_data:
+      driver: local
+
+
+
+
+
+
+
+
+
+
+# version: '3.8'
+
+# services:
+#   rabbitmq:
+#     image: rabbitmq
+#     container_name: my-rabbitmq
+#     ports:
+#       - "5672:5672"
+#       - "15672:15672"  
+#     environment:
+#       RABBITMQ_DEFAULT_USER: guest
+#       RABBITMQ_DEFAULT_PASS: guest
+#     networks:
+#       - backend
+
+#   api:
+#     container_name: api-gateway
+#     build: ./api-gateway
+#     ports:
+#       - "5053:5053"
+#     environment:
+#       RABBITMQ_HOST: rabbitmq 
+#     depends_on:
+#       - rabbitmq
+#     networks:
+#       - backend
+
+#   db:
+#     container_name: db
+#     image: postgres
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: 1234
+#       PGDATA: /data/postgres
+#       POSTGRES_DB: userdb
+#     volumes:
+#       - db_data:/data/postgres
+#     ports:
+#       - "5432:5432" 
+#     networks:
+#       - backend
+#     restart: unless-stopped
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -d postgres"]
+#       interval: 30s
+#       timeout: 40s
+#       retries: 5
+
+
+#   user-service:
+#     container_name: user-service
+#     build: ./user-service
+#     environment:
+#       RABBITMQ_HOST: rabbitmq
+#       POSTGRES_HOST: db
+#       POSTGRES_PORT: 5432 # Port specified here
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: 1234
+#       POSTGRES_DB: userdb
+#     ports:
+#       - "7778:7778"
+#     depends_on:
+#       - db
+#     networks:
+#       - backend
+
+# networks:
+#   backend:
+#     driver: bridge
+#   db:
+#     driver: bridge
+
+# volumes:
+#   db_data:
+
+
+
+
+
+# version: '3'
+
+# services:
+#   postgres:
+#     container_name: postgres_clinic
+#     image: postgres:15.3
+#     restart: always
+#     environment:
+#        POSTGRES_DB: userdb
+#        POSTGRES_USER: bobo
+#        POSTGRES_PASSWORD: 1234
+#     volumes:
+#       - ./postgres-data:/var/lib/postgresql/data
+#     networks:
+#       - clinic_network
+#     ports:
+#       - "5434:5432"  # Map container's port 5432 to host's port 5434
+
+#   clinic:
+#     build: .
+#     ports:
+#       - "8081:8081"
+#     environment:
+#        POSTGRES_HOST: postgres
+#        POSTGRES_PORT: 5432
+#        POSTGRES_USER: bobo
+#        POSTGRES_PASSWORD: 1234
+#        POSTGRES_DB: userdb
+#        HTTP_PORT: 8081
+#        SIGN_KEY: clinic
+#        LOG_LEVEL: debug
+#        ENVIRONMENT: developer
+#     volumes:
+#       - media:/app/media
+#     networks:
+#       - clinic_network
+#     depends_on:
+#       - postgres
+#     restart: always
+
+# networks:
+#   clinic_network:  # Create a custom Docker network
+#     driver: bridge  # You can change the driver as needed
+
+# volumes:
+#   media:
+#   postgres-data:
+# services:
+#   db:
+#     container_name: db
+#     image: postgres
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: 1234
+#       PGDATA: /data/postgres
+#       POSTGRES_DB: userdb
+#     volumes:
+#       - db:/data/postgres
+#     ports:
+#       - "5332:5332"
+#     networks:
+#       - db
+#     restart: unless-stopped
+#     healthcheck:
+#       test: [ "CMD-SHELL", "pg_isready -d postgres" ]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+
+#   user-service:
+#     container_name: user-service
+#     build: ./user-service
+#     depends_on:
+#       - "db"
+#     ports:
+#       - "7778:7778"
+#     networks:
+#       - db
+
+# networks:
+#   db:
+#     driver: bridge
+
+# volumes:
+#   db:
+
+
+# version: "3.8"
+# services:
+
+  # api:
+  #   container_name: api-gateway
+  #   build: ./api-gateway
+  #   ports:
+  #     - "5053:5053"
+
+  # db:
+  #   container_name: postgres
+  #   image: postgres
+  #   ports:
+  #     - "5433:5433"
+  #   environment:
+  #     POSTGRES_PASSWORD: 1234
+
+  # user_service:
+  #   container_name: user_service
+  #   build: ./user-service
+  #   ports:
+  #     - "7778:7778"
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:1234@172.17.0.2:5432/userdb
+
+
+#docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' my-rabbitmq
+
+
+
+  # api:
+  #   container_name: api-gateway
+  #   build: ./api-gateway
+  #   depends_on:
+  #     -  "user_service"
+  #   ports:
+  #     - "5053:5053"
+      
+  # userdb:
+  #   container_name: userdb
+  #   image: postgres:14.1
+  #   environment:
+  #     POSTGRES_DATABASE: userdb
+  #     POSTGRES_USER: bobo
+  #     POSTGRES_PASSWORD: 1234
+  #   expose:
+  #     - "5433" 
+  #   ports: 
+  #     - "5433:5433"
+  #   volumes:
+  #     - dbdata:/var/lib/postgresql/data
+  #   command: -p 5433
+  # migrate:
+  #   image: migrate/migrate
+    # networks:
+    #   - new
+    # volumes:
+    #   - .:/migrations
+ ##   command: -database postgres://bobo:1@userdb:5433/userdb?sslmode=disable -path /migrations up
+    # links: 
+    #   - userdb
+    # depends_on:
+    #   - userdb
+
+  # redisdb:
+  #   container_name: redisdb
+  #   image:  redis
+  #   ports:
+  #     - "6378:6378"
+  
+#   zookeeper:
+#     image: confluentinc/cp-zookeeper:latest
+#     environment:
+#       ZOOKEEPER_CLIENT_PORT: 2181
+#       ZOOKEEPER_TICK_TIME: 2000
+#     ports:
+#       - "22181:2181"
+  
+#   kafka:
+#     image: confluentinc/cp-kafka:latest
+#     depends_on:
+#       - "zookeeper"
+
+#     ports:
+#       - "29092:29092"
+
+#     environment:
+#       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+#       # KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://0.0.0.0:29092
+#       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+#       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+#       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+#       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  
+# volumes:
+#   dbdata:
+# networks:
+#   new:
